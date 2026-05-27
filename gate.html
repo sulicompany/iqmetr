@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>IQmetr · Дозвіл вчителя</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --blue:#1D4ED8;--blue-bg:#EFF6FF;--blue-mid:#BFDBFE;
+  --green:#16A34A;--green-bg:#F0FDF4;
+  --red:#DC2626;--red-bg:#FEF2F2;
+  --amber:#D97706;--amber-bg:#FFFBEB;
+  --bg:#F8FAFC;--surface:#FFFFFF;--border:#E2E8F0;--muted:#64748B;--text:#0F172A;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+.screen{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;text-align:center;min-height:100vh}
+.screen.on{display:flex}
+.logo{font-family:'Courier New',Courier,monospace;font-weight:700;font-size:1.4rem;color:var(--blue);margin-bottom:0.3rem}
+.logo span{color:var(--text);font-weight:400}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:2rem;width:100%;max-width:380px;box-shadow:0 4px 24px rgba(0,0,0,0.07)}
+.student-name{font-size:1.9rem;font-weight:800;color:var(--text);margin:1.25rem 0 0.5rem;line-height:1.2}
+.session-id{font-family:'Courier New',Courier,monospace;font-size:0.72rem;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:0.25rem 0.65rem;border-radius:5px;display:inline-block;margin-bottom:1.75rem}
+.approve-btn{width:100%;padding:1.1rem;background:var(--green);color:#fff;border:none;border-radius:14px;font-size:1.25rem;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:inherit;letter-spacing:0.01em;-webkit-tap-highlight-color:transparent}
+.approve-btn:hover{background:#15803d;transform:scale(1.01)}
+.approve-btn:active{transform:scale(0.97)}
+.approve-btn:disabled{background:var(--border);cursor:default;transform:none}
+.success-icon{font-size:4.5rem;margin-bottom:1rem;animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes popIn{from{transform:scale(0.4);opacity:0}to{transform:scale(1);opacity:1}}
+.success-name{font-size:1.6rem;font-weight:700;color:var(--green);margin-bottom:0.4rem}
+.success-sub{font-size:0.9rem;color:var(--muted)}
+label{display:block;font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:0.3rem;margin-top:1rem;text-transform:uppercase;letter-spacing:0.04em;text-align:left}
+input{width:100%;padding:0.7rem 0.9rem;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.9rem;color:var(--text);background:var(--surface);outline:none;transition:border-color 0.15s}
+input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #1D4ED815}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.65rem 1.25rem;border-radius:9px;font-family:inherit;font-size:0.9rem;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
+.btn-primary{background:var(--blue);color:#fff;width:100%;margin-top:1rem}
+.btn-primary:hover{background:#1d40c8}
+.msg{border-radius:9px;padding:0.7rem 1rem;font-size:0.82rem;font-weight:500;margin-top:0.75rem;line-height:1.5}
+.msg.err{background:var(--red-bg);border:1px solid #FECACA;color:var(--red)}
+.msg.ok{background:var(--green-bg);border:1px solid #BBF7D0;color:var(--green)}
+.msg.info{background:var(--blue-bg);border:1px solid var(--blue-mid);color:var(--blue)}
+.spin{width:32px;height:32px;border:3px solid var(--border);border-top:3px solid var(--blue);border-radius:50%;animation:spin 0.9s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.divider{height:1px;background:var(--border);margin:1.25rem 0;width:100%}
+.sessions-list{text-align:left;margin-top:0.75rem;display:flex;flex-direction:column;gap:0.4rem;max-height:300px;overflow-y:auto}
+.session-item{display:flex;align-items:center;gap:0.5rem;padding:0.55rem 0.85rem;border-radius:9px;border:1px solid var(--border);background:var(--bg)}
+.session-item.pending{background:var(--amber-bg);border-color:#FCD34D}
+.session-item.approved{background:var(--green-bg);border-color:#BBF7D0}
+.session-item .sname{flex:1;font-weight:600;font-size:0.9rem}
+.session-item .sbtn{flex-shrink:0;padding:0.35rem 0.75rem;border:none;border-radius:7px;background:var(--green);color:#fff;font-weight:600;font-size:0.78rem;cursor:pointer;font-family:inherit}
+.session-item .sbtn:disabled{background:var(--border);cursor:default}
+.token-info{font-size:0.75rem;color:var(--muted);line-height:1.6;text-align:left;margin-top:0.75rem}
+.token-info a{color:var(--blue)}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="screen on" id="s-loading">
+  <div class="spin"></div>
+  <div style="color:var(--muted);font-size:0.9rem">Завантаження...</div>
+</div>
+
+<!-- APPROVE SINGLE STUDENT -->
+<div class="screen" id="s-approve">
+  <div class="card">
+    <div class="logo">⬡ IQ<span>metr</span></div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.25rem">Запит на доступ до тесту</div>
+    <div class="student-name" id="ap-name"></div>
+    <div class="session-id" id="ap-sid"></div>
+    <button class="approve-btn" id="ap-btn" onclick="doApprove()">✅ Дозволити</button>
+    <div id="ap-msg" style="display:none" class="msg"></div>
+    <div class="divider"></div>
+    <div style="font-size:0.75rem;color:var(--muted);line-height:1.6">
+      Натискаючи «Дозволити», ви підтверджуєте, що учень особисто присутній на уроці.<br>
+      Тест на пристрої учня розпочнеться автоматично.
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="screen" id="s-success">
+  <div class="success-icon">✅</div>
+  <div class="success-name" id="sc-name"></div>
+  <div class="success-sub">Тест розпочато!</div>
+  <div style="margin-top:1.5rem">
+    <button onclick="window.close()" style="padding:0.55rem 1.5rem;border:1px solid var(--border);border-radius:9px;background:var(--surface);font-family:inherit;font-size:0.9rem;cursor:pointer;color:var(--muted)">Закрити</button>
+  </div>
+</div>
+
+<!-- NO TOKEN — SETUP -->
+<div class="screen" id="s-setup">
+  <div class="card">
+    <div class="logo" style="margin-bottom:1rem">⬡ IQ<span>metr</span></div>
+    <div style="font-weight:700;font-size:1rem;margin-bottom:0.4rem">Налаштування вчителя</div>
+    <div style="font-size:0.85rem;color:var(--muted);line-height:1.5;margin-bottom:0.25rem">
+      Введіть GitHub токен один раз — він збережеться на цьому пристрої.
+    </div>
+    <label>GitHub Personal Access Token</label>
+    <input type="password" id="setup-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+    <div id="setup-msg" style="display:none" class="msg"></div>
+    <div class="token-info">
+      Потрібен токен з правами <strong>gist</strong>.<br>
+      Створити: <a href="https://github.com/settings/tokens/new?scopes=gist&description=IQmetr+gate" target="_blank">GitHub → Settings → Tokens</a><br>
+      (обирайте «Classic token», ставте галочку <strong>gist</strong>)
+    </div>
+    <button class="btn btn-primary" onclick="saveSetupToken()">💾 Зберегти та продовжити</button>
+    <div id="setup-pending" style="display:none;margin-top:1rem">
+      <div style="font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:0.5rem;text-transform:uppercase">Після збереження натисніть:</div>
+      <button class="btn btn-primary" style="background:var(--green)" onclick="window.location.reload()">🔄 Повторно відкрити сторінку</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEACHER PANEL (no QR params — manual mode) -->
+<div class="screen" id="s-panel">
+  <div class="card" style="max-width:420px">
+    <div class="logo" style="margin-bottom:0.25rem">⬡ IQ<span>metr</span></div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:1.25rem">Панель схвалення сесій</div>
+    <label>Gist ID тесту</label>
+    <input type="text" id="panel-gist" placeholder="Вставте Gist ID..." style="font-family:'Courier New',monospace;font-size:0.82rem">
+    <button class="btn btn-primary" onclick="loadPanelSessions()">🔄 Завантажити сесії</button>
+    <div id="panel-sessions" class="sessions-list" style="display:none"></div>
+    <div id="panel-msg" style="display:none" class="msg"></div>
+    <div class="divider"></div>
+    <div style="text-align:left;font-size:0.75rem;color:var(--muted)">Токен: <span id="panel-token-hint"></span>
+      <button onclick="clearToken()" style="margin-left:0.5rem;border:none;background:none;color:var(--red);font-size:0.75rem;cursor:pointer;font-family:inherit">Змінити</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── PARAMS ────────────────────────────────────────────────────────────────────
+const params = new URLSearchParams(location.search);
+const GIST_ID = params.get('g') || '';
+const SESSION_ID = params.get('s') || '';
+const STUDENT_NAME = decodeURIComponent(params.get('n') || '');
+
+const TOKEN_KEY = 'iqmetr_gate_token';
+
+function getToken(){ return localStorage.getItem(TOKEN_KEY) || ''; }
+function setToken(t){ localStorage.setItem(TOKEN_KEY, t); }
+function clearToken(){ localStorage.removeItem(TOKEN_KEY); show('s-setup'); }
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const token = getToken();
+
+  if (!token) {
+    // No token — need setup
+    // If we have QR params, remember them to resume after setup
+    show('s-setup');
+    return;
+  }
+
+  if (GIST_ID && SESSION_ID && STUDENT_NAME) {
+    // Single-approve mode (from QR)
+    document.getElementById('ap-name').textContent = STUDENT_NAME;
+    document.getElementById('ap-sid').textContent = 'Сесія: ' + SESSION_ID.slice(0, 8) + '…';
+    show('s-approve');
+  } else {
+    // Teacher panel mode (manual)
+    document.getElementById('panel-token-hint').textContent = token.slice(0, 6) + '…' + token.slice(-4);
+    show('s-panel');
+  }
+});
+
+// ─── APPROVE SINGLE ────────────────────────────────────────────────────────────
+async function doApprove() {
+  const token = getToken();
+  if (!token) { show('s-setup'); return; }
+
+  const btn = document.getElementById('ap-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Надсилаю...';
+  showApMsg('', '');
+
+  try {
+    // 1. Read current gist content
+    let curSessions = {};
+    const r1 = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      cache: 'no-store',
+      headers: { 'Authorization': 'token ' + token }
+    });
+    if (!r1.ok) throw new Error('Не вдалося прочитати Gist (HTTP ' + r1.status + ')');
+    const d1 = await r1.json();
+    const file = d1.files && d1.files['sessions.json'];
+    if (file && file.content) {
+      curSessions = JSON.parse(file.content).sessions || {};
+    }
+
+    // 2. Write approval
+    const ts = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    curSessions[SESSION_ID] = { name: STUDENT_NAME, approved: true, ts };
+    const gistData = JSON.parse(file ? file.content : '{}');
+    gistData.sessions = curSessions;
+
+    const r2 = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json', 'User-Agent': 'IQmetr-gate' },
+      body: JSON.stringify({ files: { 'sessions.json': { content: JSON.stringify(gistData) } } })
+    });
+    if (!r2.ok) {
+      const e = await r2.json().catch(() => ({}));
+      if (r2.status === 401) throw new Error('Невірний токен. Скиньте налаштування.');
+      throw new Error(e.message || 'HTTP ' + r2.status);
+    }
+
+    // Success!
+    document.getElementById('sc-name').textContent = STUDENT_NAME;
+    show('s-success');
+
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = '✅ Дозволити';
+    showApMsg('❌ ' + err.message, 'err');
+    // Token might be invalid
+    if (err.message.includes('токен') || err.message.includes('401')) {
+      setTimeout(() => { clearToken(); }, 1500);
+    }
+  }
+}
+
+function showApMsg(text, type) {
+  const el = document.getElementById('ap-msg');
+  if (!text) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.className = 'msg ' + type;
+  el.textContent = text;
+}
+
+// ─── TOKEN SETUP ───────────────────────────────────────────────────────────────
+async function saveSetupToken() {
+  const t = document.getElementById('setup-token').value.trim();
+  const msg = document.getElementById('setup-msg');
+  if (!t || !t.startsWith('ghp_') && !t.startsWith('github_pat_')) {
+    msg.style.display = 'block'; msg.className = 'msg err';
+    msg.textContent = '❌ Токен повинен починатися з ghp_ або github_pat_'; return;
+  }
+
+  msg.style.display = 'block'; msg.className = 'msg info';
+  msg.textContent = '⏳ Перевіряю токен...';
+
+  try {
+    const r = await fetch('https://api.github.com/user', {
+      headers: { 'Authorization': 'token ' + t, 'User-Agent': 'IQmetr-gate' }
+    });
+    if (!r.ok) throw new Error('Невірний токен (HTTP ' + r.status + ')');
+    const u = await r.json();
+
+    // Check gist scope
+    const scopes = r.headers.get('x-oauth-scopes') || '';
+    if (!scopes.includes('gist') && !scopes.includes('repo')) {
+      msg.className = 'msg err';
+      msg.textContent = '❌ Токен не має прав "gist". Створіть новий токен з правами gist.';
+      return;
+    }
+
+    setToken(t);
+    msg.className = 'msg ok';
+    msg.textContent = '✅ Токен збережено! Вітаємо, ' + (u.name || u.login) + '.';
+
+    setTimeout(() => {
+      // Resume original flow
+      if (GIST_ID && SESSION_ID && STUDENT_NAME) {
+        document.getElementById('ap-name').textContent = STUDENT_NAME;
+        document.getElementById('ap-sid').textContent = 'Сесія: ' + SESSION_ID.slice(0, 8) + '…';
+        show('s-approve');
+      } else {
+        document.getElementById('panel-token-hint').textContent = t.slice(0, 6) + '…' + t.slice(-4);
+        show('s-panel');
+      }
+    }, 1200);
+
+  } catch (err) {
+    msg.className = 'msg err';
+    msg.textContent = '❌ ' + err.message;
+  }
+}
+
+// ─── TEACHER PANEL (manual mode) ───────────────────────────────────────────────
+let _panelSessions = {}, _panelGistId = '', _panelAutoIv = null;
+
+async function loadPanelSessions() {
+  const gid = document.getElementById('panel-gist').value.trim();
+  if (!gid) { showPanelMsg('Введіть Gist ID', 'err'); return; }
+  _panelGistId = gid;
+  clearInterval(_panelAutoIv);
+  await _fetchPanelSessions();
+  _panelAutoIv = setInterval(_fetchPanelSessions, 5000);
+}
+
+async function _fetchPanelSessions() {
+  const token = getToken();
+  try {
+    const r = await fetch('https://api.github.com/gists/' + _panelGistId + '?_=' + Date.now(), {
+      cache: 'no-store',
+      headers: token ? { 'Authorization': 'token ' + token } : {}
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const file = d.files && d.files['sessions.json'];
+    if (file && file.content) {
+      const data = JSON.parse(file.content);
+      _panelSessions = data.sessions || {};
+      _renderPanelSessions();
+    }
+  } catch (e) {
+    showPanelMsg('❌ ' + e.message, 'err');
+  }
+}
+
+function _renderPanelSessions() {
+  const list = document.getElementById('panel-sessions');
+  list.style.display = 'flex';
+  const keys = Object.keys(_panelSessions);
+  if (!keys.length) {
+    list.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;padding:0.5rem">Учнів ще немає. Зачекайте...</div>';
+    return;
+  }
+  const pending = keys.filter(k => !_panelSessions[k].approved);
+  const approved = keys.filter(k => _panelSessions[k].approved);
+  list.innerHTML = [
+    ...pending.map(k => `<div class="session-item pending">
+      <span class="sname">⏳ ${esc(_panelSessions[k].name || k.slice(0,8))}</span>
+      <button class="sbtn" onclick="approvePanelSession('${k}')">✅ Дозволити</button>
+    </div>`),
+    ...approved.map(k => `<div class="session-item approved">
+      <span class="sname" style="color:var(--green)">✅ ${esc(_panelSessions[k].name || k.slice(0,8))}</span>
+      <span style="font-size:0.72rem;color:var(--muted)">${_panelSessions[k].ts||''}</span>
+    </div>`)
+  ].join('');
+}
+
+async function approvePanelSession(sid) {
+  const token = getToken();
+  if (!token) { clearToken(); return; }
+  try {
+    const r1 = await fetch('https://api.github.com/gists/' + _panelGistId, {
+      cache: 'no-store', headers: { 'Authorization': 'token ' + token }
+    });
+    if (!r1.ok) throw new Error('HTTP ' + r1.status);
+    const d1 = await r1.json();
+    const file = d1.files && d1.files['sessions.json'];
+    let gistData = {};
+    if (file && file.content) gistData = JSON.parse(file.content);
+    const sessions = gistData.sessions || {};
+    const ts = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    sessions[sid] = { ...sessions[sid], approved: true, ts };
+    gistData.sessions = sessions;
+    const r2 = await fetch('https://api.github.com/gists/' + _panelGistId, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json', 'User-Agent': 'IQmetr-gate' },
+      body: JSON.stringify({ files: { 'sessions.json': { content: JSON.stringify(gistData) } } })
+    });
+    if (!r2.ok) throw new Error('HTTP ' + r2.status);
+    _panelSessions = sessions;
+    _renderPanelSessions();
+    showPanelMsg('✅ Дозволено!', 'ok');
+  } catch (e) {
+    showPanelMsg('❌ ' + e.message, 'err');
+  }
+}
+
+function showPanelMsg(text, type) {
+  const el = document.getElementById('panel-msg');
+  el.style.display = 'block'; el.className = 'msg ' + type; el.textContent = text;
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
